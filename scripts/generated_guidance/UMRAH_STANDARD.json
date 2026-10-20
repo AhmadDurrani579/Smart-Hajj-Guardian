@@ -1,0 +1,85 @@
+{
+  "journey_type": "UMRAH",
+  "variant": "STANDARD",
+  "content_status": "AI_GENERATED_UNVERIFIED",
+  "steps": [
+    {
+      "step_order": 1,
+      "title": "Preparation and Ihram at the Miqat",
+      "instructions": "Prepare for Umrah by performing personal hygiene, trimming nails, and taking a bath (ghusl) if possible. Put on the Ihram garments (two white unstitched sheets for men; modest regular clothing for women that covers the body except face and hands). Make the intention (niyyah) for Umrah in your heart and recite the Talbiyah.",
+      "location_context": "At the designated Miqat boundary station before entering the Haram zone (e.g., Dul Hulayfah, Yalamlam, or upon flights crossing the parallel).",
+      "adab": "Maintain a calm, humble demeanor. Keep your tongue occupied with remembrance of God and the Talbiyah. Avoid arguments and foul language.",
+      "dua": "Labbayka Allahumma labbayk, labbayka la sharika laka labbayk, inna al-hamda wa al-ni'mata laka wa al-mulk, la sharika lak.",
+      "safety_notes": "Ensure hydration before boarding transport. Elderly users should take comfortable transport and avoid standing for long periods in the heat at the Miqat.",
+      "source_reference": "UNVERIFIED",
+      "image_prompt": "An educational diagram showing a man wearing the white two-piece unstitched Ihram garments and a woman in modest attire, illustrating the correct posture for making the Niyyah.",
+      "image_caption": "Preparing for Ihram and Niyyah at the Miqat.",
+      "image_alt_text": "Illustration of pilgrims dressed in Ihram with educational markers."
+    },
+    {
+      "step_order": 2,
+      "title": "Entering Al-Masjid al-Haram and Tawaf",
+      "instructions": "Enter the Grand Mosque with your right foot. Proceed to the courtyard containing the Kaaba. Begin Tawaf from the line aligned with the Black Stone (Hajar al-Aswad). Perform seven complete circuits counter-clockwise around the Kaaba, starting and ending each circuit facing or gesturing toward the Black Stone.",
+      "location_context": "Al-Masjid al-Haram (Grand Mosque), Mataf courtyard around the Kaaba.",
+      "adab": "Lower your gaze, maintain respect, and avoid pushing or harming fellow pilgrims. Men may uncover their right shoulder during Tawaf (Idtiba) and walk briskly in the first three circuits (Ramal), according to mainstream scholarly practice.",
+      "dua": "Bismillahi Allahu Akbar when passing the Black Stone; personal supplications are encouraged during the circuits.",
+      "safety_notes": "Watch out for slippery floors, especially during cleaning times. Elderly or mobility-impaired users should consider using the upper floors or designated wheelchair lanes to avoid heavy crowds.",
+      "source_reference": "UNVERIFIED",
+      "image_prompt": "A clear top-down architectural diagram of the Mataf area showing the counter-clockwise path of Tawaf around the Kaaba.",
+      "image_caption": "Diagram of the Tawaf path around the Kaaba.",
+      "image_alt_text": "Architectural diagram showing 7 circuits of Tawaf."
+    },
+    {
+      "step_order": 3,
+      "title": "Praying Two Rakats behind Maqam Ibrahim",
+      "instructions": "After completing the seven circuits of Tawaf, cover your shoulder (for men) and proceed to perform two short rakats of prayer behind Maqam Ibrahim (Station of Abraham) if space permits, or anywhere feasible within the mosque.",
+      "location_context": "Near Maqam Ibrahim in Al-Masjid al-Haram.",
+      "adab": "Recite Surah Al-Kafirun in the first rakat and Surah Al-Ikhlas in the second rakat after Surah Al-Fatiha, as is traditionally reported.",
+      "dua": "Rabbana atina fid-dunya hasanatan wa fil-akhirati hasanatan wa qina 'adhab an-nar.",
+      "safety_notes": "Do not block main walking paths or crowd others while trying to pray directly behind the station. Step aside to a clear area if necessary.",
+      "source_reference": "UNVERIFIED",
+      "image_prompt": "An educational illustration depicting pilgrims praying two units of prayer near the glass-enclosed Maqam Ibrahim.",
+      "image_caption": "Performing prayer near Maqam Ibrahim.",
+      "image_alt_text": "Illustration of pilgrims praying near Maqam Ibrahim."
+    },
+    {
+      "step_order": 4,
+      "title": "Drinking Zamzam Water",
+      "instructions": "Proceed to the designated Zamzam drinking areas. Drink Zamzam water while standing or sitting facing the Kaaba, making supplications for your needs.",
+      "location_context": "Zamzam distribution stations inside Al-Masjid al-Haram and surrounding courtyards.",
+      "adab": "Drink in three breaths, praise God afterwards, and be mindful not to spill water or crowd the dispensers.",
+      "dua": "Allahumma inni as'aluka 'ilman nafi'an, wa rizqan wasi'an, wa shifa'an min kulli da'.",
+      "safety_notes": "Watch for wet floors around dispensers to avoid slips and falls. Use disposable cups provided and discard them properly.",
+      "source_reference": "UNVERIFIED",
+      "image_prompt": "A simple graphic showing a pilgrim holding a cup of Zamzam water with polite etiquette.",
+      "image_caption": "Drinking Zamzam water.",
+      "image_alt_text": "Graphic of a pilgrim drinking Zamzam water."
+    },
+    {
+      "step_order": 5,
+      "title": "Sa'i between Safa and Marwah",
+      "instructions": "Proceed to Mount Safa to begin Sa'i. Walk between Safa and Marwah for a total of seven legs (Safa to Marwah counts as one, Marwah to Safa counts as the second, ending at Marwah). Jog lightly between the green fluorescent markers for men, while women walk normally.",
+      "location_context": "The enclosed multi-level Sa'i corridor connecting Safa and Marwah.",
+      "adab": "Upon ascending Safa and Marwah, face the Kaaba if visible, raise your hands, and praise God. Keep remembrance and supplication ongoing throughout the walk.",
+      "dua": "Inna as-safa wa al-marwata min sha'airillah... (Recited upon approaching Safa at the start).",
+      "safety_notes": "Sa'i takes approximately 3 kilometers of walking. Elderly or fatigued users should utilize wheelchairs available on upper levels or take scheduled rest breaks.",
+      "source_reference": "UNVERIFIED",
+      "image_prompt": "A cross-section diagram of the Safa and Marwah walkway showing the seven directional legs and green marker lights.",
+      "image_caption": "Map and layout of Sa'i between Safa and Marwah.",
+      "image_alt_text": "Diagram showing the seven legs of Sa'i."
+    },
+    {
+      "step_order": 6,
+      "title": "Halq or Taqsir (Shaving or Trimming Hair)",
+      "instructions": "Conclude the physical rites of Umrah by cutting or shaving your hair. Men may either shave their entire head (Halq) or trim the hair evenly across the head (Taqsir), with shaving considered more meritorious in mainstream opinion. Women trim approximately a fingertip's length from the ends of their hair.",
+      "location_context": "Designated barber shops and grooming areas outside Al-Masjid al-Haram or near Marwah exit zones.",
+      "adab": "Express gratitude for the completion of the rites. Ensure licensed and hygienic barbers are used to prevent infections.",
+      "dua": "Null",
+      "safety_notes": "Ensure barbers use single-use, sterilized blades or clean clippers to avoid blood-borne infections. Report any unsanitary conditions to authorities.",
+      "source_reference": "UNVERIFIED",
+      "image_prompt": "An educational illustration showing safe and hygienic haircutting stations for completing Umrah.",
+      "image_caption": "Shaving or trimming hair (Halq or Taqsir).",
+      "image_alt_text": "Illustration showing hair trimming for Umrah completion."
+    }
+  ]
+}
