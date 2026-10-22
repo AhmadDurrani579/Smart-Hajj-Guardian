@@ -11,9 +11,9 @@ from app.schemas.group import (
     GroupJoinRequest,
     GroupResponse,
     GroupMemberResponse,
+    GroupMembershipResponse,
     GroupLeaveResponse,
 )
-
 from app.services.group_service import GroupService
 
 router = APIRouter()
@@ -48,7 +48,7 @@ def get_my_group(
 
 @router.post(
     "/join",
-    response_model=GroupMemberResponse,
+    response_model=GroupMembershipResponse,
     status_code=status.HTTP_201_CREATED,
 )
 def join_group(
@@ -60,7 +60,6 @@ def join_group(
         user_id=current_user.id,
         invitation_code=data.invitation_code,
     )
-
 
 @router.get(
     "/{group_id}",

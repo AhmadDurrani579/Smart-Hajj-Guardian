@@ -46,6 +46,17 @@ class GroupResponse(BaseModel):
     created_at: datetime
 
 
+class GroupMembershipResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    group_id: int
+    user_id: int
+    role: MemberRole
+    location_sharing_enabled: bool
+    joined_at: datetime
+    is_active: bool
+    left_at: datetime | None = None
 
 class GroupUserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
