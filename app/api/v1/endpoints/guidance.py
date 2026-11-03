@@ -12,6 +12,12 @@ from app.schemas.guidance import (
     GuidanceSourceResponse,
 )
 from app.services.guidance_service import GuidanceService
+from typing import Literal
+from fastapi import HTTPException, Query
+
+from app.services.guidance_generation_service import (
+    GuidanceGenerationService,
+)
 
 
 router = APIRouter(
@@ -54,20 +60,51 @@ def get_guidance(
     return service.get_guidance_by_id(guidance_id)
 
 
+
 @router.get(
     "/{guidance_id}/steps",
     response_model=list[GuidanceStepResponse],
 )
 def get_guidance_steps(
     guidance_id: int,
+    language: Literal["en", "ur"] = Query(default="en"),
     db: Session = Depends(get_db),
 ):
-    """
-    Retrieve step-by-step Hajj or Umrah instructions.
-    """
     service = GuidanceService(db)
 
-    return service.get_guidance_steps(guidance_id)
+    # Preserve existing guidance access and approval checks.
+    stored_steps = service.get_guidance_steps(guidance_id)
+
+    steps = [
+        GuidanceStepResponse.model_validate(
+            step,
+            from_attributes=True,
+        )
+        for step in stored_steps
+    ]
+
+    if not steps:
+        return []
+
+    try:
+        generator = GuidanceGenerationService()
+
+        return generator.generate_steps(
+            steps=steps,
+            language=language,
+        )
+
+    except Exception as exc:
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "Gemini guidance generation failed"
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail="Guidance generation is temporarily unavailable",
+        ) from exc
 
 
 @router.get(
