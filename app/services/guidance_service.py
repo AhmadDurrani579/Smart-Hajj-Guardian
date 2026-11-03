@@ -1,8 +1,12 @@
 
+from typing import Literal
+
 from fastapi import HTTPException, status
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.repositories.guidance_repository import GuidanceRepository
+from app.schemas.guidance import GuidanceStepResponse
 
 
 class GuidanceService:
@@ -50,11 +54,119 @@ class GuidanceService:
 
     def get_guidance_steps(self, guidance_id: int):
         """
-        Retrieve ordered steps for available guidance.
+        Retrieve the original English guidance steps.
         """
         self.get_guidance_by_id(guidance_id)
 
         return self.repo.get_guidance_steps(guidance_id)
+
+    def get_localized_guidance_steps(
+        self,
+        guidance_id: int,
+        language: Literal["en", "ur"] = "en",
+    ):
+        """
+        Return stored English or approved Urdu guidance.
+
+        English: guidance_steps
+        Urdu: guidance_step_localizations
+
+        No Gemini calls are made.
+        """
+
+        original_steps = self.get_guidance_steps(guidance_id)
+
+        # English: return existing database records.
+        if language == "en":
+            return original_steps
+
+        if language != "ur":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Unsupported guidance language",
+            )
+
+        if not original_steps:
+            return []
+
+        # Retrieve approved Urdu content for this version.
+        query = text("""
+            SELECT
+                gl.guidance_step_id,
+                gl.title,
+                gl.instructions,
+                gl.location_context,
+                gl.adab,
+                gl.safety_notes,
+                gl.dua_arabic,
+                gl.dua_transliteration,
+                gl.dua_meaning
+
+            FROM guidance_step_localizations gl
+
+            JOIN guidance_steps gs
+                ON gs.id = gl.guidance_step_id
+
+            WHERE gs.guidance_version_id = :guidance_id
+              AND gl.language = 'ur'
+              AND gl.is_approved = TRUE
+        """)
+
+        rows = self.db.execute(
+            query,
+            {"guidance_id": guidance_id},
+        ).mappings().all()
+
+        localizations = {
+            row["guidance_step_id"]: row
+            for row in rows
+        }
+
+        # Never return a mixture of English and Urdu
+        # if approved localizations are missing.
+        missing_steps = [
+            step.id
+            for step in original_steps
+            if step.id not in localizations
+        ]
+
+        if missing_steps:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Approved Urdu guidance is not available "
+                    "for all steps of this guidance version"
+                ),
+            )
+
+        results = []
+
+        for step in original_steps:
+            localized = localizations[step.id]
+
+            original = GuidanceStepResponse.model_validate(
+                step,
+                from_attributes=True,
+            ).model_dump()
+
+            # Replace language-specific content.
+            original["title"] = localized["title"]
+            original["instructions"] = localized["instructions"]
+            original["location_context"] = localized["location_context"]
+            original["adab"] = localized["adab"]
+            original["safety_notes"] = localized["safety_notes"]
+
+            # Keep the original stored dua field for now.
+            # Verified Arabic / translations can be added
+            # to the API schema separately.
+            original["dua"] = step.dua
+
+            # Preserve actual source verification metadata.
+            original["source_reference"] = step.source_reference
+
+            results.append(original)
+
+        return results
 
     def get_step_sources(self, guidance_id: int, step_id: int):
         """

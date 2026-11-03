@@ -15,10 +15,6 @@ from app.services.guidance_service import GuidanceService
 from typing import Literal
 from fastapi import HTTPException, Query
 
-from app.services.guidance_generation_service import (
-    GuidanceGenerationService,
-)
-
 
 router = APIRouter(
     prefix="/guidance",
@@ -67,45 +63,18 @@ def get_guidance(
 )
 def get_guidance_steps(
     guidance_id: int,
-    language: Literal["en", "ur"] = Query(default="en"),
+    language: Literal["en", "ur"] = Query(
+        default="en",
+        description="Guidance language: en or ur",
+    ),
     db: Session = Depends(get_db),
 ):
     service = GuidanceService(db)
 
-    # Preserve existing guidance access and approval checks.
-    stored_steps = service.get_guidance_steps(guidance_id)
-
-    steps = [
-        GuidanceStepResponse.model_validate(
-            step,
-            from_attributes=True,
-        )
-        for step in stored_steps
-    ]
-
-    if not steps:
-        return []
-
-    try:
-        generator = GuidanceGenerationService()
-
-        return generator.generate_steps(
-            steps=steps,
-            language=language,
-        )
-
-    except Exception as exc:
-        import logging
-
-        logging.getLogger(__name__).exception(
-            "Gemini guidance generation failed"
-        )
-
-        raise HTTPException(
-            status_code=503,
-            detail="Guidance generation is temporarily unavailable",
-        ) from exc
-
+    return service.get_localized_guidance_steps(
+        guidance_id=guidance_id,
+        language=language,
+    )
 
 @router.get(
     "/{guidance_id}/steps/{step_id}/sources",
