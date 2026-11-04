@@ -18,7 +18,9 @@ class Settings(BaseSettings):
     GEMINI_API_KEY_3: str
     GEMINI_API_KEY_4: str
     GEMINI_API_KEY_5: str
-
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
     GEMINI_MODEL: str = "gemini-flash-lite-latest"
     ALLOW_UNVERIFIED_DEV_GUIDANCE: bool = False
     model_config = SettingsConfigDict(
