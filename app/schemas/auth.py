@@ -21,7 +21,7 @@ class UserResponse(BaseModel):
     full_name: str
     email: EmailStr
     phone: str | None
-    profile_image_url: str | None
+    profile_image_url: str | None = None
     elderly_mode: bool
     account_status: str
     created_at: datetime

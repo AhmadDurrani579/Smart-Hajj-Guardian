@@ -13,7 +13,8 @@ from app.schemas.emergency_contact import (
     EmergencyContactResponse,
 )
 from app.services.emergency_contact_service import EmergencyContactService
-
+from fastapi import File, UploadFile
+from app.services.profile_image_service import ProfileImageService
 
 router = APIRouter(
     prefix="/users",
@@ -93,3 +94,50 @@ def delete_emergency_contact(
     service = EmergencyContactService(db)
     service.delete(contact_id, current_user.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/me/profile-image",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK,
+)
+def upload_my_profile_image(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Upload or replace the logged-in user's profile image.
+    Supported formats: JPEG, PNG, WebP.
+    Maximum size: 5 MB.
+    """
+
+    service = ProfileImageService(db)
+
+    try:
+        return service.upload(
+            user=current_user,
+            file=file,
+        )
+    finally:
+        file.file.close()
+
+
+@router.delete(
+    "/me/profile-image",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_my_profile_image(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Remove the logged-in user's profile image.
+    """
+
+    service = ProfileImageService(db)
+    service.delete(current_user)
+
+    return Response(
+        status_code=status.HTTP_204_NO_CONTENT
+    )

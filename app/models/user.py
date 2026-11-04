@@ -1,3 +1,4 @@
+
 from datetime import datetime
 
 from sqlalchemy import BigInteger, Boolean, DateTime, String, Text, func
@@ -14,7 +15,7 @@ class User(Base):
         primary_key=True,
         autoincrement=True,
     )
-    
+
     full_name: Mapped[str] = mapped_column(
         String,
         nullable=False,
@@ -37,6 +38,11 @@ class User(Base):
     )
 
     profile_image_url: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    profile_image_public_id: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
