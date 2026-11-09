@@ -125,3 +125,85 @@ class DashboardRepository:
             stmt,
             {"group_id": group_id},
         ).mappings().all()
+
+    # -----------------------------------------
+    # 5. Active journey
+    # -----------------------------------------
+
+    def get_active_journey(self, user_id: int):
+        stmt = text("""
+            SELECT
+                j.id,
+                j.user_id,
+                j.guidance_version_id,
+                j.journey_type,
+                j.status,
+                j.started_at
+
+            FROM journeys j
+
+            WHERE j.user_id = :user_id
+              AND j.status = 'ACTIVE'
+
+            ORDER BY j.started_at DESC, j.id DESC
+            LIMIT 1
+        """)
+
+        return self.db.execute(
+            stmt,
+            {"user_id": user_id},
+        ).mappings().first()
+
+    # -----------------------------------------
+    # 6. Guidance steps for journey
+    # -----------------------------------------
+
+    def get_journey_steps(self, guidance_version_id: int):
+        stmt = text("""
+            SELECT
+                gs.id,
+                gs.step_order,
+                gs.title
+
+            FROM guidance_steps gs
+
+            WHERE gs.guidance_version_id = :version_id
+
+            ORDER BY gs.step_order, gs.id
+        """)
+
+        return self.db.execute(
+            stmt,
+            {"version_id": guidance_version_id},
+        ).mappings().all()
+
+    # -----------------------------------------
+    # 7. Completed journey step IDs
+    # -----------------------------------------
+
+    def get_completed_step_ids(
+        self,
+        journey_id: int,
+        guidance_version_id: int,
+    ) -> set[int]:
+
+        stmt = text("""
+            SELECT DISTINCT
+                jsp.guidance_step_id
+
+            FROM journey_step_progress jsp
+
+            WHERE jsp.journey_id = :journey_id
+              AND jsp.guidance_version_id = :version_id
+              AND jsp.status = 'COMPLETED'
+        """)
+
+        rows = self.db.execute(
+            stmt,
+            {
+                "journey_id": journey_id,
+                "version_id": guidance_version_id,
+            },
+        ).scalars().all()
+
+        return set(rows)

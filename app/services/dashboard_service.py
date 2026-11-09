@@ -11,6 +11,7 @@ from app.repositories.dashboard_repository import (
 from app.schemas.dashboard import (
     DashboardResponse,
     DashboardUserResponse,
+    DashboardJourneyResponse,
     DashboardGroupResponse,
     DashboardLeaderResponse,
     DashboardGroupLocationResponse,
@@ -33,10 +34,7 @@ class DashboardService:
         lat2: float,
         lon2: float,
     ) -> float:
-        """
-        Calculate approximate distance in metres
-        between two GPS coordinates using Haversine.
-        """
+
         earth_radius = 6371000
 
         latitude_difference = radians(lat2 - lat1)
@@ -81,11 +79,88 @@ class DashboardService:
         )
 
         # -------------------------------------
-        # 2. Active group
+        # 2. Active journey and progress
+        # -------------------------------------
+
+        dashboard_journey = None
+
+        journey = self.repository.get_active_journey(
+            user_id=user_id,
+        )
+
+        if journey is not None:
+
+            journey_id = journey["id"]
+            version_id = journey["guidance_version_id"]
+
+            steps = self.repository.get_journey_steps(
+                guidance_version_id=version_id,
+            )
+
+            completed_ids = (
+                self.repository.get_completed_step_ids(
+                    journey_id=journey_id,
+                    guidance_version_id=version_id,
+                )
+            )
+
+            # Count only completed steps that belong
+            # to the journey's guidance version.
+            valid_step_ids = {
+                step["id"] for step in steps
+            }
+
+            completed_ids = (
+                completed_ids & valid_step_ids
+            )
+
+            total_steps = len(steps)
+            completed_steps = len(completed_ids)
+
+            if total_steps > 0:
+                progress_percentage = round(
+                    completed_steps / total_steps * 100,
+                    2,
+                )
+            else:
+                progress_percentage = 0.0
+
+            # First incomplete step in the
+            # official guidance order.
+            current_step = next(
+                (
+                    step
+                    for step in steps
+                    if step["id"] not in completed_ids
+                ),
+                None,
+            )
+
+            dashboard_journey = DashboardJourneyResponse(
+                id=journey_id,
+                journey_type=journey["journey_type"],
+                status=journey["status"],
+                completed_steps=completed_steps,
+                total_steps=total_steps,
+                progress_percentage=progress_percentage,
+                current_step_id=(
+                    current_step["id"]
+                    if current_step is not None
+                    else None
+                ),
+                current_step_title=(
+                    current_step["title"]
+                    if current_step is not None
+                    else None
+                ),
+            )
+
+        # -------------------------------------
+        # 3. Active group
         # -------------------------------------
 
         group = self.repository.get_active_group(
-            user_id
+            user_id,
         )
 
         dashboard_group = None
@@ -112,7 +187,7 @@ class DashboardService:
             )
 
             # ---------------------------------
-            # 3. Latest chat message
+            # 4. Latest chat message
             # ---------------------------------
 
             latest_message = (
@@ -141,7 +216,7 @@ class DashboardService:
             )
 
             # ---------------------------------
-            # 4. Group location
+            # 5. Group location
             # ---------------------------------
 
             rows = (
@@ -171,8 +246,6 @@ class DashboardService:
                     "recorded_at"
                 ]
 
-            # Both users must have shared a
-            # recent location to compute distance.
             if (
                 my_location is not None
                 and leader_location is not None
@@ -198,12 +271,12 @@ class DashboardService:
             )
 
         # -------------------------------------
-        # 5. Final Dashboard
+        # 6. Final Dashboard
         # -------------------------------------
 
         return DashboardResponse(
             user=dashboard_user,
-            journey=None,
+            journey=dashboard_journey,
             group=dashboard_group,
             group_location=dashboard_location,
             chat=dashboard_chat,
