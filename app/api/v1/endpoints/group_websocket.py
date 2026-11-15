@@ -28,7 +28,9 @@ from app.schemas.member_location import (
 from app.services.group_message_service import GroupMessageService
 from app.services.member_location_service import MemberLocationService
 from app.services.websocket_manager import websocket_manager
-
+import logging
+from starlette.concurrency import run_in_threadpool
+from app.services.geofence_service import GeofenceService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -71,6 +73,114 @@ def check_membership(group_id: int, user_id: int) -> bool:
             )
             is not None
         )
+
+
+geofence_logger = logging.getLogger(__name__)
+
+# Local authenticated WebSocket registry.
+# Separate from the existing chat manager.
+geofence_connections: dict[int, dict[WebSocket, int]] = {}
+
+
+def register_geofence_connection(
+    group_id: int,
+    user_id: int,
+    websocket: WebSocket,
+) -> None:
+    geofence_connections.setdefault(
+        group_id, {}
+    )[websocket] = user_id
+
+
+def unregister_geofence_connection(
+    group_id: int,
+    websocket: WebSocket,
+) -> None:
+    group_connections = geofence_connections.get(
+        group_id
+    )
+
+    if not group_connections:
+        return
+
+    group_connections.pop(websocket, None)
+
+    if not group_connections:
+        geofence_connections.pop(group_id, None)
+
+
+def evaluate_geofence_sync(
+    group_id: int,
+) -> tuple[int, list[dict]]:
+    # Database sessions are created inside the
+    # worker thread that uses them.
+    with SessionLocal() as db:
+        return GeofenceService(db).evaluate_group(
+            group_id
+        )
+
+def get_geofence_status_sync(
+    group_id: int,
+    user_id: int,
+) -> dict:
+    with SessionLocal() as db:
+        return GeofenceService(db).get_group_distance_status(
+            group_id=group_id,
+            user_id=user_id,
+        )
+
+
+async def evaluate_and_notify_geofence(
+    group_id: int,
+) -> None:
+    # Run synchronous PostgreSQL queries outside
+    # the async WebSocket event loop.
+    try:
+        leader_id, events = await run_in_threadpool(
+            evaluate_geofence_sync,
+            group_id,
+        )
+    except Exception:
+        geofence_logger.exception(
+            "Geofence evaluation failed for group %s",
+            group_id,
+        )
+        return
+
+    if not events or not leader_id:
+        return
+
+    # Snapshot connections because another task
+    # may disconnect while alerts are delivered.
+    sockets = list(
+        geofence_connections.get(
+            group_id, {}
+        ).items()
+    )
+
+    for websocket, connected_user_id in sockets:
+
+        # Alerts go to the current group leader only.
+        if connected_user_id != leader_id:
+            continue
+
+        # Recheck database membership at delivery time
+        # to avoid sending alerts to revoked members.
+        if not await run_in_threadpool(
+            check_membership,
+            group_id,
+            connected_user_id,
+        ):
+            continue
+
+        for event in events:
+            try:
+                await websocket.send_json(event)
+            except Exception:
+                geofence_logger.warning(
+                    "Could not deliver geofence alert"
+                )
+                break
 
 
 @router.websocket("/groups/{group_id}")
@@ -138,7 +248,11 @@ async def group_chat_websocket(
             websocket,
         )
         authenticated = True
-
+        register_geofence_connection(
+            group_id=group_id,
+            user_id=user_id,
+            websocket=websocket,
+        )
         await websocket.send_json({
             "type": "AUTH_SUCCESS",
             "data": {
@@ -165,6 +279,13 @@ async def group_chat_websocket(
                     raise ValueError(
                         "Data must be an object"
                     )
+
+                if authenticate_token(token) != user_id:
+                    await websocket.close(
+                        code=1008,
+                        reason="Access token expired or invalid",
+                    )
+                    break
 
                 if not check_membership(group_id, user_id):
                     await websocket.close(
@@ -258,7 +379,9 @@ async def group_chat_websocket(
                         "type": "LOCATION_SHARING_UPDATED",
                         "data": sharing_data,
                     })
-
+                    await evaluate_and_notify_geofence(
+                        group_id=group_id,
+                    )
                     if not request.enabled:
                         await websocket_manager.broadcast(
                             group_id,
@@ -275,11 +398,11 @@ async def group_chat_websocket(
                 # GPS: SAVE NEW LOCATION
                 # ===================================
 
+                
                 elif event_type == "SEND_LOCATION":
-                    request = LocationUpdateRequest.model_validate(
-                        data
-                    )
+                    request = LocationUpdateRequest.model_validate(data)
 
+                    # 1. Save GPS location in Neon
                     with SessionLocal() as db:
                         service = MemberLocationService(db)
 
@@ -289,15 +412,32 @@ async def group_chat_websocket(
                             data=request,
                         )
 
-                    location_data = result.model_dump(
-                        mode="json"
-                    )
+                    location_data = result.model_dump(mode="json")
 
+                    # 2. Confirm GPS location was saved
                     await websocket.send_json({
                         "type": "LOCATION_SAVED",
                         "data": location_data,
                     })
 
+                    # 3. Evaluate 500-metre geofence
+                    await evaluate_and_notify_geofence(
+                        group_id=group_id,
+                    )
+
+                    # 4. Return distances and geofence status
+                    geofence_status = await run_in_threadpool(
+                        get_geofence_status_sync,
+                        group_id,
+                        user_id,
+                    )
+
+                    await websocket.send_json({
+                        "type": "GEOFENCE_STATUS",
+                        "data": geofence_status,
+                    })
+
+                    # 5. Broadcast updated GPS coordinates
                     await websocket_manager.broadcast(
                         group_id,
                         {
@@ -306,6 +446,24 @@ async def group_chat_websocket(
                         },
                     )
 
+
+                elif event_type == "GET_GEOFENCE_STATUS":
+                    if data:
+                        raise ValueError(
+                            "GET_GEOFENCE_STATUS does not accept data"
+                        )
+
+                    result = await run_in_threadpool(
+                        get_geofence_status_sync,
+                        group_id,
+                        user_id,
+                    )
+
+                    await websocket.send_json({
+                        "type": "GEOFENCE_STATUS",
+                        "data": result,
+                    })
+                
                 # ===================================
                 # GPS: GET GROUP LOCATIONS
                 # ===================================
@@ -337,31 +495,35 @@ async def group_chat_websocket(
                         "detail": "Unknown event type",
                     })
 
-            except (
-                ValidationError,
-                ValueError,
-                json.JSONDecodeError,
-            ) as exc:
-                await websocket.send_json({
-                    "type": "ERROR",
-                    "detail": str(exc),
-                })
+            except (ValidationError, ValueError, json.JSONDecodeError) as exc:
+                    await websocket.send_json({
+                        "type": "ERROR",
+                        "detail": str(exc),
+                    })
 
             except HTTPException as exc:
-                await websocket.send_json({
-                    "type": "ERROR",
-                    "detail": exc.detail,
-                })
+                    await websocket.send_json({
+                        "type": "ERROR",
+                        "detail": exc.detail,
+                    })
+
+                # Geofence authorization error
+            except PermissionError:
+                    await websocket.send_json({
+                        "type": "ERROR",
+                        "detail": "Not authorized for this group",
+                    })
 
             except Exception:
-                logger.exception(
-                    "Group WebSocket event failed"
-                )
+                    logger.exception("Group WebSocket event failed")
 
-                await websocket.send_json({
-                    "type": "ERROR",
-                    "detail": "Unable to process request",
-                })
+                    await websocket.send_json({
+                        "type": "ERROR",
+                        "detail": "Unable to process request",
+                    })
+
+
+            
 
     except asyncio.TimeoutError:
         await websocket.close(
@@ -374,6 +536,11 @@ async def group_chat_websocket(
 
     finally:
         if authenticated:
+            unregister_geofence_connection(
+                group_id,
+                websocket,
+            )
+
             await websocket_manager.disconnect(
                 group_id,
                 websocket,
