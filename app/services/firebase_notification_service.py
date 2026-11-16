@@ -199,7 +199,7 @@ class FirebaseNotificationService:
 
         event_bodies = {
             "GEOFENCE_EXITED": (
-                "A group member has left the 500-metre safe zone."
+                "A group member has left the 50-metre safe zone."
             ),
             "GEOFENCE_OUTSIDE": (
                 "A group member was detected outside the safe zone."

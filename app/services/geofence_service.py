@@ -6,8 +6,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 
-GEOFENCE_RADIUS_M = 500.0
-HYSTERESIS_M = 20.0
+GEOFENCE_RADIUS_M = 50
+HYSTERESIS_M = 5
 MAX_ACCURACY_M = 50.0
 
 
