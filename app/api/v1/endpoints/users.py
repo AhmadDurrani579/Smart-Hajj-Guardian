@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Response, status, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
@@ -15,6 +15,11 @@ from app.schemas.emergency_contact import (
 from app.services.emergency_contact_service import EmergencyContactService
 from fastapi import File, UploadFile
 from app.services.profile_image_service import ProfileImageService
+from sqlalchemy import text
+from app.schemas.fcm_device import (
+    FCMDeviceRegisterRequest,
+    FCMDeviceUnregisterRequest,
+)
 
 router = APIRouter(
     prefix="/users",
@@ -141,3 +146,71 @@ def delete_my_profile_image(
     return Response(
         status_code=status.HTTP_204_NO_CONTENT
     )
+
+
+@router.post("/me/fcm-devices")
+def register_fcm_device(
+    payload: FCMDeviceRegisterRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    db.execute(
+        text("""
+            INSERT INTO user_fcm_devices (
+                user_id,
+                fcm_token,
+                platform,
+                is_active
+            )
+            VALUES (
+                :user_id,
+                :fcm_token,
+                'ANDROID',
+                TRUE
+            )
+            ON CONFLICT (fcm_token)
+            DO UPDATE SET
+                user_id = EXCLUDED.user_id,
+                platform = EXCLUDED.platform,
+                is_active = TRUE,
+                updated_at = NOW()
+        """),
+        {
+            "user_id": current_user.id,
+            "fcm_token": payload.fcm_token,
+        },
+    )
+
+    db.commit()
+
+    return {
+        "message": "FCM device registered successfully",
+    }
+
+
+@router.delete("/me/fcm-devices")
+def unregister_fcm_device(
+    payload: FCMDeviceUnregisterRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    db.execute(
+        text("""
+            UPDATE user_fcm_devices
+            SET
+                is_active = FALSE,
+                updated_at = NOW()
+            WHERE user_id = :user_id
+              AND fcm_token = :fcm_token
+        """),
+        {
+            "user_id": current_user.id,
+            "fcm_token": payload.fcm_token,
+        },
+    )
+
+    db.commit()
+
+    return {
+        "message": "FCM device unregistered successfully",
+    }

@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str = ""
     GEMINI_MODEL: str = "gemini-flash-lite-latest"
     ALLOW_UNVERIFIED_DEV_GUIDANCE: bool = False
+    FIREBASE_SERVICE_ACCOUNT_JSON_BASE64: str = ""
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

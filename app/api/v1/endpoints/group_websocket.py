@@ -31,6 +31,8 @@ from app.services.websocket_manager import websocket_manager
 import logging
 from starlette.concurrency import run_in_threadpool
 from app.services.geofence_service import GeofenceService
+import asyncio
+from app.services.firebase_notification_service import FirebaseNotificationService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -130,11 +132,11 @@ def get_geofence_status_sync(
         )
 
 
+
 async def evaluate_and_notify_geofence(
     group_id: int,
 ) -> None:
-    # Run synchronous PostgreSQL queries outside
-    # the async WebSocket event loop.
+    # 1. Evaluate the geofence using PostgreSQL
     try:
         leader_id, events = await run_in_threadpool(
             evaluate_geofence_sync,
@@ -147,25 +149,28 @@ async def evaluate_and_notify_geofence(
         )
         return
 
+    # No geofence transitions detected
     if not events or not leader_id:
         return
 
-    # Snapshot connections because another task
-    # may disconnect while alerts are delivered.
+    # 2. Get active WebSocket connections
     sockets = list(
         geofence_connections.get(
             group_id, {}
         ).items()
     )
 
+    # =========================================
+    # WEBSOCKET GEOFENCE NOTIFICATIONS
+    # =========================================
+
     for websocket, connected_user_id in sockets:
 
-        # Alerts go to the current group leader only.
+        # Only notify the group leader
         if connected_user_id != leader_id:
             continue
 
-        # Recheck database membership at delivery time
-        # to avoid sending alerts to revoked members.
+        # Verify the leader is still a group member
         if not await run_in_threadpool(
             check_membership,
             group_id,
@@ -178,11 +183,36 @@ async def evaluate_and_notify_geofence(
                 await websocket.send_json(event)
             except Exception:
                 geofence_logger.warning(
-                    "Could not deliver geofence alert"
+                    "Could not deliver geofence alert "
+                    "to leader of group %s",
+                    group_id,
                 )
                 break
 
+    # =========================================
+    # FIREBASE GEOFENCE PUSH NOTIFICATIONS
+    # =========================================
 
+    # Runs independently of WebSocket connections
+    for event in events:
+        try:
+            await asyncio.to_thread(
+                FirebaseNotificationService.notify_geofence_event,
+                group_id=group_id,
+                member_user_id=event["data"]["user_id"],
+                event_type=event["type"],
+                distance_m=event["data"].get("distance_m"),
+            )
+
+        except Exception:
+            geofence_logger.exception(
+                "Failed to send Firebase geofence "
+                "notification for group %s",
+                group_id,
+            )
+
+        
+        
 @router.websocket("/groups/{group_id}")
 async def group_chat_websocket(
     websocket: WebSocket,
@@ -327,6 +357,13 @@ async def group_chat_websocket(
                             "type": "NEW_MESSAGE",
                             "data": message_data,
                         },
+                    )
+
+                    # Send Firebase notification to other group members
+                    await asyncio.to_thread(
+                        FirebaseNotificationService.notify_group_message,
+                        group_id=group_id,
+                        sender_user_id=user_id,
                     )
 
                 elif event_type == "GET_HISTORY":
